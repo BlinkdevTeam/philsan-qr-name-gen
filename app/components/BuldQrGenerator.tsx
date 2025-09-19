@@ -8,25 +8,26 @@ import { saveAs } from "file-saver";
 
 type Person = {
   Name: string;
-  Affiliation: string;
+  Company: string;
   Email: string;
+  Souvenir?: string; // 👈 added Souvenir
 };
 
 export default function BulkQrGenerator() {
   const [data, setData] = useState<Person[]>([]);
-  const [loading, setLoading] = useState(false); // 👈 loading state
+  const [loading, setLoading] = useState(false);
   const cardRefs: MutableRefObject<(HTMLDivElement | null)[]> = useRef([]);
 
   // Load JSON from /public
   useEffect(() => {
-    fetch("/data/philsan_names_with_affiliations.json")
+    fetch("/data/selected_philsan_printed.json")
       .then((res) => res.json())
       .then((json) => setData(json));
   }, []);
 
   // Bulk download as ZIP
   const downloadAllAsZip = async () => {
-    setLoading(true); // 👈 start loading
+    setLoading(true);
     const zip = new JSZip();
 
     for (let i = 0; i < data.length; i++) {
@@ -36,21 +37,19 @@ export default function BulkQrGenerator() {
       const canvas = await html2canvas(card, { backgroundColor: "#ffffff" });
       const dataUrl = canvas.toDataURL("image/png");
 
-      // Convert base64 to Blob and add to ZIP
       const imgData = dataUrl.split(",")[1];
       zip.file(`${data[i].Name}_qr.png`, imgData, { base64: true });
     }
 
-    // Generate and trigger download
     const content = await zip.generateAsync({ type: "blob" });
     saveAs(content, "bulk_qr_codes.zip");
 
-    setLoading(false); // 👈 stop loading
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#141414] p-6 flex flex-col justify-center items-center">
-      <h2 className="text-2xl font-bold text-center mb-6 text-white">
+    <div className="min-h-screen bg-[#f0f0f0] p-6 flex flex-col justify-center items-center">
+      <h2 className="text-2xl font-bold text-center mb-6 text-black">
         Bulk QR Generator
       </h2>
 
@@ -58,10 +57,10 @@ export default function BulkQrGenerator() {
         <button
           onClick={downloadAllAsZip}
           disabled={loading}
-          className={`px-4 py-2 rounded transition ${
+          className={`px-4 py-2 rounded transition cursor-pointer ${
             loading
-              ? "bg-gray-500 cursor-not-allowed"
-              : "bg-[#dfd00a] hover:bg-gray-800 text-white"
+              ? "bg-[#808080] cursor-not-allowed" // safe hex gray
+              : "bg-[#dfd00a] hover:bg-[#333333] text-white"
           }`}
         >
           {loading ? "Downloading..." : "Download All as ZIP"}
@@ -69,35 +68,42 @@ export default function BulkQrGenerator() {
       </div>
 
       {/* Display cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 w-fit">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-fit">
         {data.map((person, index) => (
           <div
             key={index}
             ref={(el) => {
               cardRefs.current[index] = el;
             }}
-            className="grid grid-cols-[40%_60%] gap-2 bg-white w-[230px] h-[100px] shadow-md text-black p-2"
+            className="grid grid-cols-[40%_60%] w-[430px] gap-0 bg-white text-black border"
           >
             {/* QR */}
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center p-4">
               <QRCodeCanvas
                 value={person.Email}
-                size={76}
                 fgColor="#000000"
                 bgColor="#ffffff"
               />
             </div>
 
             {/* Info */}
-            <div className="flex flex-col justify-center text-black overflow-hidden pr-2 py-2">
+            <div className="relative w-full h-auto flex flex-col justify-center text-black overflow-hidden pr-2 py-2 mb-4">
               <h3
-                className="text-[10px] font-semibold leading-[12px] break-words"
-                style={{ minHeight: "14px" }}
+                className="text-[24px] font-semibold leading-[26px] break-words"
+                style={{ minHeight: "28px" }}
               >
                 {person.Name}
               </h3>
-              <p className="text-[9px] leading-[11px] break-words">
-                {person.Affiliation || " "}
+              <p className="text-[16px] leading-[20px] break-words">
+                {person.Company || " "}
+              </p>
+
+              {/* Souvenir fixed at bottom-right */}
+              <p
+                className="absolute bottom-0 right-2 text-[12px] italic"
+                style={{ color: "#666666" }} // ✅ safe gray
+              >
+                {person.Souvenir || ""}
               </p>
             </div>
           </div>
